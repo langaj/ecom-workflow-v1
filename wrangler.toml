@@ -2,18 +2,15 @@ name = "ecom-workflow-v1"
 main = "worker/index.js"
 compatibility_date = "2025-04-01"
 
-# Pages configuration for frontend
-[pages]
-production_branch = "main"
-[[pages.assets]]
-bucket = "./frontend"
-include = ["**/*.html", "**/*.css", "**/*.js", "**/*.png", "**/*.jpg", "**/*.svg"]
+# Account ID for the Cloudflare account to use
+# (set this to avoid the multi-account prompt)
+account_id = "8f89a83cd9cc730f7dd298e536eea9b2"
 
 # D1 Database
 [[d1_databases]]
 binding = "DB"
 database_name = "ecom-workflow-db"
-database_id = ""
+database_id = "CHANGE_ME"
 
 # R2 Storage
 [[r2_buckets]]
