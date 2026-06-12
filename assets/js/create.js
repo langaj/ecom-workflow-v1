@@ -1,4 +1,4 @@
-/* Ecom Workflow System V1 - Create Task Page */
+﻿/* Ecom Workflow V1 - Create Task Page */
 
 // --- State ---
 const state = {
@@ -9,155 +9,161 @@ const state = {
   skus: [],
 };
 
-// --- Init ---
 document.addEventListener('DOMContentLoaded', () => {
   renderVariants();
   renderSpecs();
   updateSKU();
 });
 
-// --- Upload Handling ---
-function setupUploadZone(elementId, category, targetArray) {
-  const zone = document.getElementById(elementId);
-  const fileInput = zone.querySelector('input[type="file"]');
-  const preview = zone.querySelector('.upload-preview');
+// --- Local file handling (upload happens on submit) ---
+function gp(eid) { return document.getElementById(eid.replace('-upload', '-preview')); }
 
-  zone.addEventListener('click', () => fileInput.click());
-  zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
-  zone.addEventListener('dragleave', () => { zone.classList.remove('dragover'); });
-  zone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    zone.classList.remove('dragover');
-    Array.from(e.dataTransfer.files).forEach(f => uploadFile(f, category, targetArray, preview));
-  });
-  fileInput.addEventListener('change', (e) => {
-    Array.from(e.target.files).forEach(f => uploadFile(f, category, targetArray, preview));
-    fileInput.value = '';
-  });
+function suz(eid, cat, arr) {
+  const z = document.getElementById(eid);
+  const fi = z.querySelector('input[type="file"]');
+  const pv = gp(eid);
+  z.onclick = () => fi.click();
+  z.ondragover = e => { e.preventDefault(); z.classList.add('dragover'); };
+  z.ondragleave = () => { z.classList.remove('dragover'); };
+  z.ondrop = e => { e.preventDefault(); z.classList.remove('dragover'); Array.from(e.dataTransfer.files).forEach(f => alf(f, arr, pv)); };
+  fi.onchange = e => { Array.from(e.target.files).forEach(f => alf(f, arr, pv)); fi.value = ''; };
 }
 
-setupUploadZone('reference-upload', 'reference', state.referenceImages);
-setupUploadZone('attachment-upload', 'attachment', state.attachments);
+suz('reference-upload', 'reference', state.referenceImages);
+suz('attachment-upload', 'attachment', state.attachments);
 
-async function uploadFile(file, category, targetArray, previewEl) {
-  try {
-    const result = await api.uploadFile(file, category);
-    targetArray.push({ name: file.name, url: result.url, key: result.key });
-    renderUploadPreview(previewEl, targetArray);
-  } catch (err) {
-    createToast('Upload failed: ' + err.message, 'error');
-  }
+function alf(file, arr, pv) {
+  if (!pv) return;
+  const url = URL.createObjectURL(file);
+  arr.push({ name: file.name, file: file, url: url });
+  rup(pv, arr);
 }
 
-function renderUploadPreview(container, items) {
-  container.style.display = items.length > 0 ? 'grid' : 'none';
-  container.innerHTML = items.map((item, i) => '<div class="upload-item"><img src="' + item.url + '" alt="' + item.name + '" onerror="this.src=' + "'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22><rect fill=%22%23f3f4f6%22 width=%22100%25%22 height=%22100%25%22/></svg>'" + '"><button class="remove-btn" onclick="removeUploadItem(' + i + ', ' + "'" + container.id + "'" + ')">&times;</button></div>').join('');
+function rup(c, items) {
+  if (!c) return;
+  c.style.display = items.length > 0 ? 'grid' : 'none';
+  c.innerHTML = items.map((item, i) =>
+    '<div class="upload-item"><img src="' + item.url + '" alt="' + item.name + '" style="width:100%;height:120px;object-fit:cover;"><button class="remove-btn" onclick="rui(this,' + i + ')">&times;</button></div>'
+  ).join('');
 }
 
-function removeUploadItem(index, containerId) {
-  const category = containerId === 'reference-preview' ? state.referenceImages : state.attachments;
-  category.splice(index, 1);
-  renderUploadPreview(document.getElementById(containerId), category);
+function rui(btn, idx) {
+  const c = btn.closest('.upload-preview');
+  const isRef = c.id === 'reference-preview';
+  const arr = isRef ? state.referenceImages : state.attachments;
+  if (arr[idx] && arr[idx].url && arr[idx].url.startsWith('blob:')) URL.revokeObjectURL(arr[idx].url);
+  arr.splice(idx, 1);
+  rup(c, arr);
 }
 
-// --- Variant Config ---
-function addVariant() { state.variants.push({ name: '', image: null }); renderVariants(); updateSKU(); }
-function removeVariant(index) { state.variants.splice(index, 1); renderVariants(); updateSKU(); }
+// --- Variant ---
+function addVariant() { state.variants.push({ name: '', image: null }); rv(); updateSKU(); }
+function removeVariant(i) { state.variants.splice(i, 1); rv(); updateSKU(); }
 
-function renderVariants() {
+function rv() {
   const c = document.getElementById('variant-list');
-  c.innerHTML = state.variants.map((v, i) => '<div class="config-row"><input class="form-input" placeholder="Variant name" value="' + v.name + '" onchange="state.variants[' + i + '].name=this.value;updateSKU()"><button class="btn btn-secondary btn-sm" onclick="uploadVariantImage(' + i + ')">' + (v.image ? 'Uploaded' : 'Upload') + '</button><button class="btn btn-danger btn-sm" onclick="removeVariant(' + i + ')">X</button></div>').join('');
+  if (!c) return;
+  c.innerHTML = state.variants.map((v, i) =>
+    '<div class="config-row"><input class="form-input" placeholder="e.g. Color" value="' + esc(v.name) + '" onchange="state.variants[' + i + '].name=this.value;updateSKU()"><button class="btn btn-secondary btn-sm" onclick="uv(' + i + ')">' + (v.image ? 'OK' : 'Img') + '</button><button class="btn btn-danger btn-sm" onclick="removeVariant(' + i + ')">X</button></div>'
+  ).join('');
 }
 
-async function uploadVariantImage(index) {
-  const input = document.createElement('input');
-  input.type = 'file'; input.accept = 'image/*';
-  input.onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    try {
-      const result = await api.uploadFile(file, 'reference');
-      state.variants[index].image = result.url;
-      renderVariants();
-      createToast('Variant img uploaded');
-    } catch (err) { createToast('Upload failed: ' + err.message, 'error'); }
+async function uv(i) {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    try { const r = await api.uploadFile(f, 'reference'); state.variants[i].image = r.url; rv(); }
+    catch (err) { createToast('Upload failed: ' + err.message, 'error'); }
   };
-  input.click();
+  inp.click();
 }
 
-// --- Spec Config ---
-function addSpec() { state.specs.push({ name: '', image: null, values: [] }); renderSpecs(); updateSKU(); }
-function removeSpec(index) { state.specs.splice(index, 1); renderSpecs(); updateSKU(); }
+// --- Spec ---
+function addSpec() { state.specs.push({ name: '', image: null, values: [] }); rs(); updateSKU(); }
+function removeSpec(i) { state.specs.splice(i, 1); rs(); updateSKU(); }
 
-function renderSpecs() {
+function rs() {
   const c = document.getElementById('spec-list');
-  c.innerHTML = state.specs.map((s, i) => '<div class="card" style="margin-bottom:12px;"><div class="config-row"><input class="form-input" placeholder="Spec name" value="' + s.name + '" onchange="state.specs[' + i + '].name=this.value;updateSKU()"><button class="btn btn-secondary btn-sm" onclick="uploadSpecImage(' + i + ')">' + (s.image ? 'Uploaded' : 'Upload') + '</button><button class="btn btn-danger btn-sm" onclick="removeSpec(' + i + ')">X</button></div><div id="spec-values-' + i + '">' + s.values.map((v, j) => '<div class="config-row"><input class="form-input" placeholder="Value" value="' + v + '" onchange="state.specs[' + i + '].values[' + j + ']=this.value;updateSKU()"><button class="btn btn-danger btn-sm" onclick="removeSpecValue(' + i + ',' + j + ')">X</button></div>').join('') + '<button class="btn btn-secondary btn-sm" onclick="addSpecValue(' + i + ')">+ Add Value</button></div></div>').join('');
+  if (!c) return;
+  c.innerHTML = state.specs.map((s, i) =>
+    '<div class="card" style="margin-bottom:12px;"><div class="config-row"><input class="form-input" placeholder="e.g. Size" value="' + esc(s.name) + '" onchange="state.specs[' + i + '].name=this.value;updateSKU()"><button class="btn btn-secondary btn-sm" onclick="us(' + i + ')">' + (s.image ? 'OK' : 'Img') + '</button><button class="btn btn-danger btn-sm" onclick="removeSpec(' + i + ')">X</button></div><div>' +
+    s.values.map((v, j) => '<div class="config-row"><input class="form-input" placeholder="e.g. 500ml" value="' + esc(v) + '" onchange="state.specs[' + i + '].values[' + j + ']=this.value;updateSKU()"><button class="btn btn-danger btn-sm" onclick="removeSpecValue(' + i + ',' + j + ')">X</button></div>').join('') +
+    '<button class="btn btn-secondary btn-sm" onclick="addSpecValue(' + i + ')">+ Value</button></div></div>'
+  ).join('');
 }
 
-function addSpecValue(i) { state.specs[i].values.push(''); renderSpecs(); updateSKU(); }
-function removeSpecValue(i, j) { state.specs[i].values.splice(j, 1); renderSpecs(); updateSKU(); }
+function addSpecValue(i) { state.specs[i].values.push(''); rs(); updateSKU(); }
+function removeSpecValue(i, j) { state.specs[i].values.splice(j, 1); rs(); updateSKU(); }
 
-async function uploadSpecImage(index) {
-  const input = document.createElement('input');
-  input.type = 'file'; input.accept = 'image/*';
-  input.onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    try {
-      const result = await api.uploadFile(file, 'reference');
-      state.specs[index].image = result.url;
-      renderSpecs();
-      createToast('Spec img uploaded');
-    } catch (err) { createToast('Upload failed: ' + err.message, 'error'); }
+async function us(i) {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    try { const r = await api.uploadFile(f, 'reference'); state.specs[i].image = r.url; rs(); }
+    catch (err) { createToast('Upload failed: ' + err.message, 'error'); }
   };
-  input.click();
+  inp.click();
 }
 
-// --- SKU Generation ---
+// --- SKU ---
 function updateSKU() {
   const vv = state.variants.filter(v => v.name.trim());
   const vs = state.specs.filter(s => s.name.trim() && s.values.some(x => x.trim()));
-  const container = document.getElementById('sku-result');
-
-  if (vv.length === 0 && vs.length === 0) {
-    container.innerHTML = '<div style="color:var(--gray-400);font-size:0.85rem;">Add variants and specs to generate SKUs</div>';
-    state.skus = []; return;
-  }
-
-  const groups = vs.map(s => ({ name: s.name.trim(), values: s.values.filter(x => x.trim()) }));
-  function cartesian(g) {
-    if (g.length === 0) return [[]];
-    const [first, ...rest] = g;
-    return cartesian(rest).flatMap(combo => first.values.map(val => [{ groupName: first.name, value: val }, ...combo]));
-  }
-  const combos = groups.length > 0 ? cartesian(groups) : [[]];
+  const c = document.getElementById('sku-result');
+  if (!c) return;
+  if (vv.length === 0 && vs.length === 0) { c.innerHTML = '<div style="color:var(--gray-400);font-size:0.85rem;">Add variants & specs to generate SKUs</div>'; state.skus = []; return; }
+  const g = vs.map(s => ({ name: s.name.trim(), values: s.values.filter(x => x.trim()) }));
+  function cart(g) { if (g.length === 0) return [[]]; const [f, ...r] = g; return cart(r).flatMap(co => f.values.map(v => [{ groupName: f.name, value: v }, ...co])); }
+  const combos = g.length > 0 ? cart(g) : [[]];
   state.skus = [];
   let html = '';
   for (const v of vv) {
-    for (const combo of combos) {
-      const name = v.name.trim() + (combo.length ? ' + ' + combo.map(c => c.value).join('+') : '');
-      state.skus.push({ variant: v.name.trim(), specs: combo, name: name });
-      html += '<span class="sku-tag">' + name + '</span>';
+    for (const co of combos) {
+      const n = v.name.trim() + (co.length ? ' + ' + co.map(c => c.value).join('+') : '');
+      state.skus.push({ variant: v.name.trim(), specs: co, name: n });
+      html += '<span class="sku-tag">' + esc(n) + '</span>';
     }
   }
-  container.innerHTML = html;
-  document.getElementById('sku-count').textContent = state.skus.length > 0 ? state.skus.length + ' SKUs' : '';
+  c.innerHTML = html;
+  const e = document.getElementById('sku-count');
+  if (e) e.textContent = state.skus.length + ' SKUs';
 }
 
-// --- Submit ---
+function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// --- Upload files then submit ---
+async function uploadArr(arr, cat) {
+  const res = [];
+  for (const item of arr) {
+    if (!item.file) { res.push(item); continue; }
+    try {
+      const r = await api.uploadFile(item.file, cat);
+      if (item.url && item.url.startsWith('blob:')) URL.revokeObjectURL(item.url);
+      res.push({ name: item.name, url: r.url, key: r.key });
+    } catch (err) { createToast('Upload ' + item.name + ' failed: ' + err.message, 'error'); throw err; }
+  }
+  return res;
+}
+
 document.getElementById('create-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = document.getElementById('submit-btn');
-  btn.disabled = true; btn.textContent = 'Submitting...';
+  btn.disabled = true; btn.textContent = 'Uploading...';
   try {
+    const refs = await uploadArr(state.referenceImages, 'reference');
+    const atts = await uploadArr(state.attachments, 'attachment');
+    btn.textContent = 'Submitting...';
     const fd = new FormData(e.target);
     const body = {
-      taskName: fd.get('taskName'), platform: fd.get('platform'), market: fd.get('market'),
-      language: fd.get('language'), requirement: fd.get('requirement'),
+      taskName: fd.get('taskName'),
+      platform: '', market: '', language: '',
+      requirement: fd.get('requirement') || '',
       productInfo: {
-        productName: fd.get('productName'), brand: fd.get('brand'), category: fd.get('category'),
-        targetAudience: fd.get('targetAudience'), priceRange: fd.get('priceRange'),
-        referenceImages: state.referenceImages, attachments: state.attachments,
+        productName: fd.get('productName') || '',
+        referenceImages: refs,
+        attachments: atts,
       },
       variants: state.variants.filter(v => v.name.trim()),
       specs: state.specs.filter(s => s.name.trim()),
@@ -168,11 +174,11 @@ document.getElementById('create-form').addEventListener('submit', async (e) => {
       skuImageCount: parseInt(fd.get('skuImageCount')) || 1,
       workflowMode: fd.get('workflowMode') || 'auto',
     };
-    const result = await api.createBatch(body);
-    createToast('Task ' + result.batch_no + ' created');
-    setTimeout(() => navigate('detail.html?id=' + result.id), 1000);
+    const r = await api.createBatch(body);
+    createToast('Task ' + r.batch_no + ' created');
+    setTimeout(() => navigate('detail.html?id=' + r.id), 1000);
   } catch (err) {
-    createToast('Create failed: ' + err.message, 'error');
-    btn.disabled = false; btn.textContent = 'Submit Task';
+    createToast('Submit failed: ' + err.message, 'error');
+    btn.disabled = false; btn.textContent = 'Submit';
   }
 });
