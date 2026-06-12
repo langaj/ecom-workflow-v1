@@ -1,0 +1,33 @@
+name = "ecom-workflow-v1"
+main = "worker/index.js"
+compatibility_date = "2025-04-01"
+
+# Pages configuration for frontend
+[pages]
+production_branch = "main"
+[[pages.assets]]
+bucket = "./frontend"
+include = ["**/*.html", "**/*.css", "**/*.js", "**/*.png", "**/*.jpg", "**/*.svg"]
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "ecom-workflow-db"
+database_id = ""
+
+# R2 Storage
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "ecom-workflow-storage"
+
+# Environment variables
+[vars]
+R2_PUBLIC_URL = ""
+
+[env.production]
+[env.production.vars]
+R2_PUBLIC_URL = "https://storage.yourdomain.com"
+
+[env.staging]
+[env.staging.vars]
+R2_PUBLIC_URL = ""
