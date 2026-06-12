@@ -1,6 +1,6 @@
 /* Ecom Workflow System V1 - API Client */
 
-const API_BASE = 'https://ecom.langaj.work/api';
+const API_BASE = 'https://ess.langaj.work/api';
 
 async function apiRequest(method, path, body = null) {
   const opts = {
