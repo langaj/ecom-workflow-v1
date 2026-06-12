@@ -20,12 +20,12 @@
 | 前端 Pages | `ecom.langaj.cn` | GitHub 仓库 → Pages 自动部署 |
 | 后端 Worker | `ecom.langaj.work` | 在线编辑器粘贴代码 |
 
-> Pages 构建设置：**Root directory** 设为 `frontend`
+> Pages 构建设置：**Root directory** 设为 `repo root`
 
 ## 项目结构
 
 ```
-frontend/                   # Cloudflare Pages 站点
+Repo root                   # Cloudflare Pages 站点
   index.html                # 仪表盘
   jobs.html                 # 任务列表
   create.html               # 创建任务（核心页面）
@@ -91,7 +91,7 @@ POST https://ecom.langaj.work/api/callback/job
 2. 选择 `langaj/ecom-workflow-v1`
 3. **Production branch**: `master`
 4. **Build command**: 留空
-5. **Root directory**: `frontend` ← 关键设置
+5. **Root directory**: `repo root` ← 关键设置
 6. Pages 项目 → **Settings** → **Domains** → 绑定 `ecom.langaj.cn`
 
 ### 后端 (Worker)
