@@ -47,7 +47,7 @@ function generateBatchNo() {
 function generateJobNo(bn,i){return bn+"-"+String(i).padStart(3,"0");}
 function pjs(s,fb){try{return JSON.parse(s)}catch{return fb}}
 function nowStr(){return new Date().toISOString().replace("T"," ").substring(0,19);}
-function b64e(s){return btoa(s).replace(/\\+/g,"-").replace(/\\//g,"_").replace(/=+$/,"");}
+function b64e(s){return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");}
 function b64d(s){s=s.replace(/-/g,"+").replace(/_/g,"/");while(s.length%4)s+="=";return atob(s);}
 async function jwtCreate(payload,secret){
   const h=b64e(JSON.stringify({alg:"HS256",typ:"JWT"})), b=b64e(JSON.stringify(payload));
@@ -278,7 +278,7 @@ async function handleEvents(request,env,corsHeaders){
   try{await env.DB.prepare("CREATE TABLE IF NOT EXISTS ecom_event(id INTEGER PRIMARY KEY AUTOINCREMENT,batch_id INTEGER NOT NULL,event_type TEXT NOT NULL,payload TEXT NOT NULL DEFAULT '{}',created_at TEXT NOT NULL DEFAULT (datetime('now')))").run();}catch{}
   const{readable,writable}=new TransformStream();
   const w=writable.getWriter(), enc=new TextEncoder();
-  w.write(enc.encode(":connected\\n\\n"));
+  w.write(enc.encode(":connected\n\n"));
   let lastId=0;
   const poll=async()=>{
     try{
@@ -286,10 +286,10 @@ async function handleEvents(request,env,corsHeaders){
       if(batchId){q+=" AND batch_id=?";p.push(parseInt(batchId));}
       q+=" ORDER BY id ASC LIMIT 50";
       const rows=await env.DB.prepare(q).bind(...p).all();
-      for(const r of rows.results){lastId=r.id;w.write(enc.encode("id: "+r.id+"\\nevent: "+r.event_type+"\\ndata: "+r.payload+"\\n\\n"));}
+      for(const r of rows.results){lastId=r.id;w.write(enc.encode("id: "+r.id+"\nevent: "+r.event_type+"\ndata: "+r.payload+"\n\n"));}
     }catch{}
     try{await env.DB.prepare("DELETE FROM ecom_event WHERE id<=(SELECT MAX(id)-1000 FROM ecom_event)").run();}catch{}
-    try{w.write(enc.encode(":ping\\n\\n"));}catch{clearInterval(iv);}
+    try{w.write(enc.encode(":ping\n\n"));}catch{clearInterval(iv);}
   };
   const iv=setInterval(poll,2000);poll();
   request.signal.addEventListener("abort",()=>{clearInterval(iv);w.close().catch(()=>{});});
@@ -316,13 +316,13 @@ export default {
       else if(method==="PUT"&&path==="/api/config")resp=await handleUpdateConfig(request,env);
       else if(method==="POST"&&path==="/api/batches")resp=await handleCreateBatch(request,env);
       else if(method==="GET"&&path==="/api/batches")resp=await handleListBatches(request,env);
-      else if(method==="GET"&&/^\\/api\\/batches\\/\\d+$/.test(path))resp=await handleGetBatch(path.split("/")[3],env);
-      else if(method==="PUT"&&/^\\/api\\/batches\\/\\d+$/.test(path))resp=await handleUpdateBatch(path.split("/")[3],request,env);
-      else if(method==="DELETE"&&/^\\/api\\/batches\\/\\d+$/.test(path))resp=await handleDeleteBatch(path.split("/")[3],env);
-      else if(method==="POST"&&/^\\/api\\/batches\\/\\d+\\/start$/.test(path))resp=await handleBatchStart(path.split("/")[3],env);
-      else if(method==="POST"&&/^\\/api\\/batches\\/\\d+\\/push-phase$/.test(path))resp=await handleBatchPushPhase(path.split("/")[3],request,env);
+      else if(method==="GET"&&/^\/api\/batches\/\d+$/.test(path))resp=await handleGetBatch(path.split("/")[3],env);
+      else if(method==="PUT"&&/^\/api\/batches\/\d+$/.test(path))resp=await handleUpdateBatch(path.split("/")[3],request,env);
+      else if(method==="DELETE"&&/^\/api\/batches\/\d+$/.test(path))resp=await handleDeleteBatch(path.split("/")[3],env);
+      else if(method==="POST"&&/^\/api\/batches\/\d+\/start$/.test(path))resp=await handleBatchStart(path.split("/")[3],env);
+      else if(method==="POST"&&/^\/api\/batches\/\d+\/push-phase$/.test(path))resp=await handleBatchPushPhase(path.split("/")[3],request,env);
       else if(method==="GET"&&path==="/api/jobs")resp=await handleListJobs(request,env);
-      else if(method==="GET"&&/^\\/api\\/jobs\\/\\d+$/.test(path))resp=await handleGetJob(path.split("/")[3],env);
+      else if(method==="GET"&&/^\/api\/jobs\/\d+$/.test(path))resp=await handleGetJob(path.split("/")[3],env);
       else if(method==="POST"&&path==="/api/upload")resp=await handleUpload(request,env);
       else if(method==="POST"&&path==="/api/callback/job")resp=await handleJobCallback(request,env);
       else resp=jsonResponse({error:"Not Found"},404);
