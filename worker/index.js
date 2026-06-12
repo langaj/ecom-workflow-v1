@@ -110,12 +110,12 @@ function parseJsonSafe(str, fallback = null) {
 async function handleDashboard(env) {
   const db = env.DB;
   const [totalRow, pendingRow, runningRow, completedRow, failedRow, recentRows] = await Promise.all([
-    db.prepare('SELECT COUNT(*) as count FROM batch').first(),
-    db.prepare("SELECT COUNT(*) as count FROM batch WHERE status = 'pending'").first(),
-    db.prepare("SELECT COUNT(*) as count FROM batch WHERE status = 'running'").first(),
-    db.prepare("SELECT COUNT(*) as count FROM batch WHERE status = 'completed'").first(),
-    db.prepare("SELECT COUNT(*) as count FROM batch WHERE status = 'failed'").first(),
-    db.prepare('SELECT id, batch_no, task_name, status, created_at, updated_at FROM batch ORDER BY created_at DESC LIMIT 10').all(),
+    db.prepare('SELECT COUNT(*) as count FROM ecom_batch').first(),
+    db.prepare("SELECT COUNT(*) as count FROM ecom_batch WHERE status = 'pending'").first(),
+    db.prepare("SELECT COUNT(*) as count FROM ecom_batch WHERE status = 'running'").first(),
+    db.prepare("SELECT COUNT(*) as count FROM ecom_batch WHERE status = 'completed'").first(),
+    db.prepare("SELECT COUNT(*) as count FROM ecom_batch WHERE status = 'failed'").first(),
+    db.prepare('SELECT id, batch_no, task_name, status, created_at, updated_at FROM ecom_batch ORDER BY created_at DESC LIMIT 10').all(),
   ]);
 
   return jsonResponse({
@@ -143,7 +143,7 @@ async function handleCreateBatch(request, env) {
   const skuJson = JSON.stringify(body.skus || []);
 
   const result = await db.prepare(`
-    INSERT INTO batch (batch_no, task_name, platform, market, language, requirement,
+    INSERT INTO ecom_batch (batch_no, task_name, platform, market, language, requirement,
       status, workflow_mode, batch_count, main_image_count, detail_image_count,
       sku_image_count, product_json, variant_json, spec_json, sku_json, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -169,7 +169,7 @@ async function handleCreateBatch(request, env) {
   const skus = body.skus || [];
   if (skus.length > 0) {
     const stmt = db.prepare(`
-      INSERT INTO job (batch_id, job_no, status, progress, current_step, sku_info, created_at, updated_at)
+      INSERT INTO ecom_job (batch_id, job_no, status, progress, current_step, sku_info, created_at, updated_at)
       VALUES (?, ?, 'planning', 0, '', ?, ?, ?)
     `);
     for (let i = 0; i < skus.length; i++) {
@@ -180,7 +180,7 @@ async function handleCreateBatch(request, env) {
     // No SKUs, create a default job
     const jobNo = generateJobNo(batchNo, 1);
     await db.prepare(`
-      INSERT INTO job (batch_id, job_no, status, progress, current_step, sku_info, created_at, updated_at)
+      INSERT INTO ecom_job (batch_id, job_no, status, progress, current_step, sku_info, created_at, updated_at)
       VALUES (?, ?, 'planning', 0, '', '{}', ?, ?)
     `).bind(batchId, jobNo, now, now).run();
   }
@@ -201,8 +201,8 @@ async function handleListBatches(request, env) {
   const pageSize = parseInt(url.searchParams.get('pageSize')) || 20;
   const offset = (page - 1) * pageSize;
 
-  let query = 'SELECT id, batch_no, task_name, status, created_at, updated_at FROM batch WHERE 1=1';
-  let countQuery = 'SELECT COUNT(*) as count FROM batch WHERE 1=1';
+  let query = 'SELECT id, batch_no, task_name, status, created_at, updated_at FROM ecom_batch WHERE 1=1';
+  let countQuery = 'SELECT COUNT(*) as count FROM ecom_batch WHERE 1=1';
   const params = [];
   const countParams = [];
 
@@ -238,13 +238,13 @@ async function handleListBatches(request, env) {
 
 async function handleGetBatch(id, env) {
   const db = env.DB;
-  const batch = await db.prepare('SELECT * FROM batch WHERE id = ?').bind(id).first();
+  const batch = await db.prepare('SELECT * FROM ecom_batch WHERE id = ?').bind(id).first();
   if (!batch) {
     return jsonResponse({ error: 'Batch not found' }, 404);
   }
 
   // Enrich with jobs
-  const jobs = await db.prepare('SELECT * FROM job WHERE batch_id = ? ORDER BY job_no ASC').bind(id).all();
+  const jobs = await db.prepare('SELECT * FROM ecom_job WHERE batch_id = ? ORDER BY job_no ASC').bind(id).all();
 
   return jsonResponse({
     ...batch,
@@ -266,7 +266,7 @@ async function handleUpdateBatch(id, request, env) {
   const body = await request.json();
   const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
 
-  const existing = await db.prepare('SELECT id FROM batch WHERE id = ?').bind(id).first();
+  const existing = await db.prepare('SELECT id FROM ecom_batch WHERE id = ?').bind(id).first();
   if (!existing) {
     return jsonResponse({ error: 'Batch not found' }, 404);
   }
@@ -323,21 +323,21 @@ async function handleUpdateBatch(id, request, env) {
   params.push(now);
   params.push(id);
 
-  await db.prepare(`UPDATE batch SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
+  await db.prepare(`UPDATE ecom_batch SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
 
   return jsonResponse({ message: 'Batch updated successfully' });
 }
 
 async function handleDeleteBatch(id, env) {
   const db = env.DB;
-  const existing = await db.prepare('SELECT id FROM batch WHERE id = ?').bind(id).first();
+  const existing = await db.prepare('SELECT id FROM ecom_batch WHERE id = ?').bind(id).first();
   if (!existing) {
     return jsonResponse({ error: 'Batch not found' }, 404);
   }
 
   // Delete jobs first, then batch
-  await db.prepare('DELETE FROM job WHERE batch_id = ?').bind(id).run();
-  await db.prepare('DELETE FROM batch WHERE id = ?').bind(id).run();
+  await db.prepare('DELETE FROM ecom_job WHERE batch_id = ?').bind(id).run();
+  await db.prepare('DELETE FROM ecom_batch WHERE id = ?').bind(id).run();
 
   return jsonResponse({ message: 'Batch deleted successfully' });
 }
@@ -353,8 +353,8 @@ async function handleListJobs(request, env) {
   const pageSize = parseInt(url.searchParams.get('pageSize')) || 50;
   const offset = (page - 1) * pageSize;
 
-  let query = 'SELECT j.*, b.task_name, b.batch_no FROM job j LEFT JOIN batch b ON j.batch_id = b.id WHERE 1=1';
-  let countQuery = 'SELECT COUNT(*) as count FROM job WHERE 1=1';
+  let query = 'SELECT j.*, b.task_name, b.batch_no FROM ecom_job j LEFT JOIN ecom_batch b ON j.batch_id = b.id WHERE 1=1';
+  let countQuery = 'SELECT COUNT(*) as count FROM ecom_job WHERE 1=1';
   const params = [];
   const countParams = [];
 
@@ -390,8 +390,8 @@ async function handleListJobs(request, env) {
 async function handleGetJob(id, env) {
   const db = env.DB;
   const job = await db.prepare(`
-    SELECT j.*, b.task_name, b.batch_no FROM job j
-    LEFT JOIN batch b ON j.batch_id = b.id
+    SELECT j.*, b.task_name, b.batch_no FROM ecom_job j
+    LEFT JOIN ecom_batch b ON j.batch_id = b.id
     WHERE j.id = ?
   `).bind(id).first();
 
@@ -451,7 +451,7 @@ async function handleJobCallback(request, env) {
     return jsonResponse({ error: 'job_no is required' }, 400);
   }
 
-  const job = await db.prepare('SELECT * FROM job WHERE job_no = ?').bind(job_no).first();
+  const job = await db.prepare('SELECT * FROM ecom_job WHERE job_no = ?').bind(job_no).first();
   if (!job) {
     return jsonResponse({ error: 'Job not found' }, 404);
   }
@@ -460,33 +460,33 @@ async function handleJobCallback(request, env) {
   const step = current_step || job.current_step;
   const prog = progress !== undefined ? progress : job.progress;
 
-  // Update job
+  // UPDATE ecom_job
   await db.prepare(`
-    UPDATE job SET status = ?, current_step = ?, progress = ?, result_json = ?, updated_at = ?
+    UPDATE ecom_job SET status = ?, current_step = ?, progress = ?, result_json = ?, updated_at = ?
     WHERE id = ?
   `).bind(status || job.status, step, prog, resultJson, now, job.id).run();
 
-  // Update batch status if needed
+  // UPDATE ecom_batch status if needed
   if (status === 'failed') {
     await db.prepare(`
-      UPDATE batch SET status = 'failed', updated_at = ?
+      UPDATE ecom_batch SET status = 'failed', updated_at = ?
       WHERE id = ? AND status != 'failed'
     `).bind(now, job.batch_id).run();
   } else {
     // Check if all jobs in batch are completed
     const pendingJobs = await db.prepare(`
-      SELECT COUNT(*) as count FROM job WHERE batch_id = ? AND status != 'completed'
+      SELECT COUNT(*) as count FROM ecom_job WHERE batch_id = ? AND status != 'completed'
     `).bind(job.batch_id).first();
 
     if (pendingJobs.count === 0) {
       await db.prepare(`
-        UPDATE batch SET status = 'completed', updated_at = ?
+        UPDATE ecom_batch SET status = 'completed', updated_at = ?
         WHERE id = ?
       `).bind(now, job.batch_id).run();
     } else if (status === 'planning' || status === 'main_image' || status === 'detail_image' || status === 'sku_image') {
       // Ensure batch is marked as running when jobs start processing
       await db.prepare(`
-        UPDATE batch SET status = 'running', updated_at = ?
+        UPDATE ecom_batch SET status = 'running', updated_at = ?
         WHERE id = ? AND status IN ('pending', 'running')
       `).bind(now, job.batch_id).run();
     }

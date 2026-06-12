@@ -1,6 +1,6 @@
 -- Ecom Workflow System V1 - D1 Database Schema
 
-CREATE TABLE IF NOT EXISTS batch (
+CREATE TABLE IF NOT EXISTS ecom_batch (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   batch_no TEXT NOT NULL UNIQUE,
   task_name TEXT NOT NULL,
@@ -23,11 +23,11 @@ CREATE TABLE IF NOT EXISTS batch (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_batch_status ON batch(status);
-CREATE INDEX IF NOT EXISTS idx_batch_batch_no ON batch(batch_no);
-CREATE INDEX IF NOT EXISTS idx_batch_created_at ON batch(created_at);
+CREATE INDEX IF NOT EXISTS idx_ecom_batch_status ON ecom_batch(status);
+CREATE INDEX IF NOT EXISTS idx_ecom_batch_batch_no ON ecom_batch(batch_no);
+CREATE INDEX IF NOT EXISTS idx_ecom_batch_created_at ON ecom_batch(created_at);
 
-CREATE TABLE IF NOT EXISTS job (
+CREATE TABLE IF NOT EXISTS ecom_job (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   batch_id INTEGER NOT NULL,
   job_no TEXT NOT NULL UNIQUE,
@@ -38,9 +38,9 @@ CREATE TABLE IF NOT EXISTS job (
   result_json TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-  FOREIGN KEY (batch_id) REFERENCES batch(id) ON DELETE CASCADE
+  FOREIGN KEY (batch_id) REFERENCES ecom_batch(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_job_batch_id ON job(batch_id);
-CREATE INDEX IF NOT EXISTS idx_job_status ON job(status);
-CREATE INDEX IF NOT EXISTS idx_job_job_no ON job(job_no);
+CREATE INDEX IF NOT EXISTS idx_ecom_job_batch_id ON ecom_job(batch_id);
+CREATE INDEX IF NOT EXISTS idx_ecom_job_status ON ecom_job(status);
+CREATE INDEX IF NOT EXISTS idx_ecom_job_job_no ON ecom_job(job_no);

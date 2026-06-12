@@ -4,13 +4,14 @@ compatibility_date = "2025-04-01"
 
 # Account ID for the Cloudflare account to use
 # (set this to avoid the multi-account prompt)
-account_id = "8f89a83cd9cc730f7dd298e536eea9b2"
+account_id = "119c775c75d07779e5fa03a4c490fbd6"
+
 
 # D1 Database
 [[d1_databases]]
 binding = "DB"
 database_name = "ecom-workflow-db"
-database_id = "CHANGE_ME"
+database_id = ""
 
 # R2 Storage
 [[r2_buckets]]

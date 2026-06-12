@@ -1,0 +1,128 @@
+PS D:\DockerApps\Ecom_Workflow_System_V1> wrangler d1 create ecom-workflow-db
+
+ ⛅️ wrangler 4.99.0 (update available 4.100.0)
+──────────────────────────────────────────────
+✅ Successfully created DB 'ecom-workflow-db' in region WNAM
+Created your new D1 database.
+
+To access your new D1 Database in your Worker, add the following snippet to your configuration file:
+[[d1_databases]]
+binding = "ecom_workflow_db"
+database_name = "ecom-workflow-db"
+database_id = "8317f39c-c79c-4603-aab7-a013bee50a66"
+
+PS D:\DockerApps\Ecom_Workflow_System_V1> wrangler d1 execute ecom-workflow-db --file=database/schema.sql --remote
+
+ ⛅️ wrangler 4.99.0 (update available 4.100.0)
+──────────────────────────────────────────────
+Resource location: remote
+
+√ ⚠️ This process may take some time, during which your D1 database will be unavailable to serve queries.
+  Ok to proceed? ... yes
+🌀 Executing on remote database ecom-workflow-db (8317f39c-c79c-4603-aab7-a013bee50a66):
+🌀 To execute on your local development database, remove the --remote flag from your wrangler command.
+Note: if the execution fails to complete, your DB will return to its original state and you can safely retry.
+├ 🌀 Uploading 8317f39c-c79c-4603-aab7-a013bee50a66.71b07232e17845ab.sql
+│ 🌀 Uploading complete.
+│
+🌀 Starting import...
+🌀 Processed 8 queries.
+🚣 Executed 8 queries in 6.16ms (15 rows read, 14 rows written)
+   Database is currently at bookmark 00000000-0000000c-00005088-83d934a423947dcb52196071a0873d24.
+┌────────────────────────┬───────────┬──────────────┬────────────────────┐
+│ Total queries executed │ Rows read │ Rows written │ Database size (MB) │
+├────────────────────────┼───────────┼──────────────┼────────────────────┤
+│ 8                      │ 15        │ 14           │ 0.06               │
+└────────────────────────┴───────────┴──────────────┴────────────────────┘
+PS D:\DockerApps\Ecom_Workflow_System_V1> wrangler r2 bucket create ecom-workflow-storage
+
+ ⛅️ wrangler 4.99.0 (update available 4.100.0)
+──────────────────────────────────────────────
+Creating bucket 'ecom-workflow-storage'...
+✅ Created bucket 'ecom-workflow-storage' with default storage class of Standard.
+To access your new R2 Bucket in your Worker, add the following snippet to your configuration file:
+[[r2_buckets]]
+bucket_name = "ecom-workflow-storage"
+binding = "ecom_workflow_storage"
+
+PS D:\DockerApps\Ecom_Workflow_System_V1> wrangler deploy
+
+ ⛅️ wrangler 4.99.0 (update available 4.100.0)
+──────────────────────────────────────────────
+▲ [WARNING] Multiple environments are defined in the Wrangler configuration file, but no target environment was specified for the deploy command.
+
+  To avoid unintentional changes to the wrong environment, it is recommended to explicitly specify
+  the target environment using the `-e|--env` flag or CLOUDFLARE_ENV env variable.
+  If your intention is to use the top-level environment of your configuration simply pass an empty
+  string to the flag to target such environment. For example `--env=""`.
+
+
+Total Upload: 15.79 KiB / gzip: 3.79 KiB
+Your Worker has access to the following bindings:
+Binding                                        Resource
+env.DB (ecom-workflow-db)                      D1 Database
+env.R2 (ecom-workflow-storage)                 R2 Bucket
+env.R2_PUBLIC_URL ("")                         Environment Variable
+
+Uploaded ecom-workflow-v1 (3.55 sec)
+Deployed ecom-workflow-v1 triggers (1.17 sec)
+  https://ecom-workflow-v1.langaj.workers.dev
+Current Version ID: 0be1a590-50f3-4898-b609-c3e4a1df50a2
+PS D:\DockerApps\Ecom_Workflow_System_V1> wrangler pages deploy frontend --project-name=ecom-workflow-v1
+
+ ⛅️ wrangler 4.99.0 (update available 4.100.0)
+──────────────────────────────────────────────
+▲ [WARNING] Pages now has wrangler.toml support.
+
+  We detected a configuration file at D:\DockerApps\Ecom_Workflow_System_V1\wrangler.toml but it is
+  missing the "pages_build_output_dir" field, required by Pages.
+  If you would like to use this configuration file to deploy your project, please use
+  "pages_build_output_dir" to specify the directory of static files to upload.
+  Ignoring configuration file for now, and proceeding with project deploy.
+
+
+
+X [ERROR] A request to the Cloudflare API (/accounts/8f89a83cd9cc730f7dd298e536eea9b2/pages/projects/ecom-workflow-v1) failed.
+
+  Authentication error [code: 10000]
+
+
+Getting User settings...
+👋 You are logged in with an OAuth Token, associated with the email xiaoyan20267@qq.com.
+┌──────────────┬──────────────────────────────────┐
+│ Account Name │ Account ID                       │
+├──────────────┼──────────────────────────────────┤
+│ langaj       │ 119c775c75d07779e5fa03a4c490fbd6 │
+└──────────────┴──────────────────────────────────┘
+🔓 Token Permissions:
+Scope (Access)
+- account (read)
+- user (read)
+- workers (write)
+- workers_kv (write)
+- workers_routes (write)
+- workers_scripts (write)
+- workers_tail (read)
+- d1 (write)
+- pages (write)
+- zone (read)
+- ssl_certs (write)
+- ai (write)
+- ai-search (write)
+- ai-search (run)
+- websearch.run
+- agent-memory (write)
+- queues (write)
+- pipelines (write)
+- secrets_store (write)
+- artifacts (write)
+- flagship (write)
+- containers (write)
+- cloudchamber (write)
+- connectivity (admin)
+- email_routing (write)
+- email_sending (write)
+- browser (write)
+- offline_access
+🪵  Logs were written to "C:\Users\admin\AppData\Roaming\xdg.config\.wrangler\logs\wrangler-2026-06-12_02-18-47_715.log"
+PS D:\DockerApps\Ecom_Workflow_System_V1>
