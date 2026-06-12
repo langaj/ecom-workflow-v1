@@ -4,7 +4,7 @@
 )
 
 # Ecom Workflow V1 - One-click deploy script
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 $PROJECT_DIR = "D:\DockerApps\Ecom_Workflow_System_V1"
 $REPO_NAME = "ecom-workflow-v1"
 
