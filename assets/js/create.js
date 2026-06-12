@@ -1,4 +1,4 @@
-﻿/* Ecom Workflow V1 - Create Task Page */
+/* Ecom Workflow V1 - Create Task Page */
 
 // --- State ---
 const state = {
@@ -10,8 +10,8 @@ const state = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-  renderVariants();
-  renderSpecs();
+  rv();
+  rs();
   updateSKU();
 });
 
