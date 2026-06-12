@@ -1,4 +1,4 @@
-// Ecom Workflow System V1 - Cloudflare Worker
+﻿// Ecom Workflow System V1 - Cloudflare Worker
 // Single file architecture. All routes in one place.
 
 
@@ -21,6 +21,25 @@ export default {
     }
 
     try {
+      // Login - no auth required
+      if (method === 'POST' && path === '/api/auth/login') {
+        const b = await request.json();
+        if (!b.password || b.password !== env.AUTH_PASSWORD) {
+          return new Response(JSON.stringify({ error: 'Invalid password' }), { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+        }
+        const token = await jwtCreate({ sub: 'admin', iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 86400 }, env.AUTH_PASSWORD);
+        return new Response(JSON.stringify({ token }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+      }
+
+      // All other /api/* require JWT
+      if (path.startsWith('/api/')) {
+        const auth = request.headers.get('Authorization');
+        const payload = await jwtVerify(auth ? auth.replace('Bearer ', '') : '', env.AUTH_PASSWORD);
+        if (!payload) {
+          return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+        }
+      }
+
       let response;
 
       // ── Dashboard ──────────────────────────────────────────────────────────
@@ -101,6 +120,30 @@ function generateJobNo(batchNo, index) {
   return `${batchNo}-${String(index).padStart(3, '0')}`;
 }
 
+
+// --- JWT helpers ---
+async function jwtCreate(payload, secret) {
+  const h = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+  const b = btoa(JSON.stringify(payload));
+  const data = h + "." + b;
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data));
+  return data + "." + btoa(String.fromCharCode(...new Uint8Array(sig)));
+}
+
+async function jwtVerify(token, secret) {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const data = parts[0] + "." + parts[1];
+    const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
+    const valid = await crypto.subtle.verify("HMAC", key, new Uint8Array(atob(parts[2]).split("").map(c => c.charCodeAt(0))), new TextEncoder().encode(data));
+    if (!valid) return null;
+    const payload = JSON.parse(atob(parts[1]));
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
+    return payload;
+  } catch { return null; }
+}
 function parseJsonSafe(str, fallback = null) {
   try { return JSON.parse(str); } catch { return fallback; }
 }
@@ -424,7 +467,7 @@ async function handleUpload(request, env) {
 
   const fileName = file.name;
   const ext = fileName.includes('.') ? fileName.split('.').pop() : '';
-  const key = `${category}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
+  const key = `ecom/${category}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
 
   const arrayBuffer = await file.arrayBuffer();
   await env.R2.put(key, arrayBuffer, {
