@@ -20,9 +20,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         </tr>
       `).join('');
     } else {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--gray-400);padding:24px;">暂无任务</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--gray-400);padding:24px;">No tasks</td></tr>';
     }
   } catch (err) {
-    createToast('加载仪表盘失败: ' + err.message, 'error');
+    createToast('Dashboard load failed: ' + err.message, 'error');
   }
 });

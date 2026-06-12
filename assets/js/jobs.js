@@ -44,25 +44,25 @@ async function loadBatches() {
         </tr>
       `).join('');
     } else {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--gray-400);">没有找到任务</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--gray-400);">No tasks found</td></tr>';
     }
 
     // Pagination
     const totalPages = Math.ceil(result.total / pageSize);
     if (totalPages > 1) {
-      let pagesHtml = `<button class="btn btn-secondary btn-sm" onclick="goPage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''}>上一页</button>`;
+      let pagesHtml = `<button class="btn btn-secondary btn-sm" onclick="goPage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''}>Prev</button>`;
       for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) {
         pagesHtml += `<button class="btn ${i === currentPage ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="goPage(${i})">${i}</button>`;
       }
-      pagesHtml += `<button class="btn btn-secondary btn-sm" onclick="goPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>下一页</button>`;
-      pagesHtml += `<span class="pagination-info">共 ${result.total} 条</span>`;
+      pagesHtml += `<button class="btn btn-secondary btn-sm" onclick="goPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>Next</button>`;
+      pagesHtml += `<span class="pagination-info">Total ${result.total} </span>`;
       pagination.innerHTML = pagesHtml;
     } else {
       pagination.innerHTML = '';
     }
 
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--red-600);">加载失败: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--red-600);">Load failed: ${err.message}</td></tr>`;
   }
 }
 
