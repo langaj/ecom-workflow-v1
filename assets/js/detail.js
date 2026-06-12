@@ -22,6 +22,7 @@ async function loadDetail(id) {
 
     renderBasicInfo(batchData);
     renderProductInfo(batchData);
+    renderTitleInfo(batchData);
     renderReferences(batchData);
     renderAttachments(batchData);
     renderVariantSpecInfo(batchData);
@@ -114,6 +115,34 @@ function renderProductInfo(data) {
     </div>
   `;
 }
+
+function renderTitleInfo(data) {
+  const title = data.title_json || {};
+  // title_json: { product_title: "...", sku_titles: { "B240612-001": "...", ... } }
+  if (!title.product_title && !title.sku_titles) return;
+  const section = createSection('Generated Titles');
+  let html = '';
+  if (title.product_title) {
+    html += '<div class="detail-field" style="margin-bottom:12px">' +
+      '<span class="detail-field-label">Product Title</span>' +
+      '<span class="detail-field-value">' + esc(title.product_title) + '</span></div>';
+  }
+  if (title.sku_titles) {
+    const skuEntries = Object.entries(title.sku_titles);
+    if (skuEntries.length > 0) {
+      html += '<h4 style="margin:8px 0;font-size:0.85rem;color:var(--gray-600);">SKU Titles</h4>';
+      html += '<div style="display:grid;gap:6px">';
+      for (const [jobNo, skuTitle] of skuEntries) {
+        html += '<div class="detail-field"><span class="detail-field-label">' + esc(jobNo) + '</span>' +
+          '<span class="detail-field-value">' + esc(skuTitle) + '</span></div>';
+      }
+      html += '</div>';
+    }
+  }
+  section.innerHTML = html;
+}
+
+function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function renderReferences(data) {
   const section = createSection('Reference Images');
@@ -241,6 +270,9 @@ function renderExcel(data) {
 }
 
 function renderJobs(data) {
+  // Add workflow control buttons
+  addWorkflowControls(data);
+
   const jobs = data.jobs || [];
   if (jobs.length === 0) return;
 
@@ -292,6 +324,90 @@ function renderJobs(data) {
   });
 
   section.innerHTML = html;
+}
+
+/* --- Workflow Controls --- */
+function addWorkflowControls(data) {
+  const container = document.getElementById('detail-content');
+  if (data.status === 'pending') {
+    const div = document.createElement('div');
+    div.innerHTML = '<div style="margin-bottom:16px;display:flex;gap:12px;align-items:center">' +
+      '<button class="btn btn-primary" onclick="startWorkflow(' + data.id + ')">Push to Workflow</button>' +
+      '<span style="font-size:0.85rem;color:var(--gray-500)">Batch is pending. Review and push to start.</span></div>';
+    container.insertBefore(div.firstElementChild, container.firstChild);
+  } else if (data.status === 'running') {
+    const div = document.createElement('div');
+    const phases = ['title_generating','planning','main_image','detail_image','sku_image'];
+    const labels = ['Title','Plan','Main Image','Detail Image','SKU Image'];
+    const mode = data.workflow_mode;
+    let btns = '';
+    if (mode === 'manual') {
+      btns = phases.map((p,i) => '<button class="btn btn-secondary btn-sm" onclick="pushPhase(' + data.id + ',\'' + p + '\')">Push ' + labels[i] + '</button>').join(' ');
+    } else {
+      btns = '<span style="font-size:0.85rem;color:var(--gray-500)">Auto mode: Worker orchestrates phases automatically.</span>';
+    }
+    div.innerHTML = '<div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">' + btns + '</div>';
+    container.insertBefore(div.firstElementChild, container.firstChild);
+  }
+}
+
+async function startWorkflow(id) {
+  try {
+    const r = await fetch(API_BASE + '/batches/' + id + '/start', { method: 'POST', headers: { 'Authorization': 'Bearer ' + getToken(), 'Content-Type': 'application/json' } });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    createToast('Workflow started');
+    loadDetail(id);
+  } catch (e) { createToast('Start failed: ' + e.message, 'error'); }
+}
+
+async function pushPhase(id, phase) {
+  try {
+    const r = await fetch(API_BASE + '/batches/' + id + '/push-phase', { method: 'POST', headers: { 'Authorization': 'Bearer ' + getToken(), 'Content-Type': 'application/json' }, body: JSON.stringify({ phase }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    createToast('Phase pushed: ' + phase);
+  } catch (e) { createToast('Push failed: ' + e.message, 'error'); }
+}
+
+/* --- Auto Refresh via SSE --- */
+let eventSource = null;
+let refreshTimer = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+  const id = getQueryParam('id');
+  if (id) setupAutoRefresh(id);
+});
+
+async function setupAutoRefresh(batchId) {
+  // Try SSE first
+  try {
+    eventSource = connectEvents(batchId,
+      (type, data) => {
+        if (type === 'job_update' || type === 'batch_update' || type === 'phase_error') {
+          loadDetail(batchId);
+        }
+      },
+      () => { /* fall back to polling */ }
+    );
+  } catch {}
+  // Fallback: poll every 4s
+  refreshTimer = setInterval(async () => {
+    try {
+      const resp = await fetch(API_BASE + '/batches/' + batchId, {
+        headers: { 'Authorization': 'Bearer ' + getToken() },
+      });
+      const data = await resp.json();
+      // Only refresh if still running
+      if (data.status === 'running' || data.status === 'pending') return;
+      // If completed/failed, stop polling
+      clearInterval(refreshTimer);
+      refreshTimer = null;
+      if (eventSource) { eventSource.close(); eventSource = null; }
+      // Reload one last time
+      loadDetail(batchId);
+    } catch {}
+  }, 4000);
 }
 
 function createSection(title) {

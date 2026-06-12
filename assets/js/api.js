@@ -79,9 +79,22 @@ const api = {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('category', category);
-    const resp = await fetch(`${API_BASE}/upload`, { method: 'POST', body: formData });
+    const token = getToken();
+    const headers = {};
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    const resp = await fetch(`${API_BASE}/upload`, { method: 'POST', headers, body: formData });
     const data = await resp.json();
     if (!resp.ok) {
+
+/* --- SSE Events --- */
+function connectEvents(batchId, onEvent, onError) {
+  const es = new EventSource(API_BASE.replace('/api','') + '/api/events?batch_id=' + batchId);
+  es.addEventListener('job_update', e => { try { onEvent('job_update', JSON.parse(e.data)); } catch {} });
+  es.addEventListener('batch_update', e => { try { onEvent('batch_update', JSON.parse(e.data)); } catch {} });
+  es.addEventListener('phase_error', e => { try { onEvent('phase_error', JSON.parse(e.data)); } catch {} });
+  es.onerror = () => { if (onError) onError(); };
+  return es;
+}
       throw new Error(data.error || 'Upload failed');
     }
     return data;
@@ -186,3 +199,10 @@ function showLogin() {
 (function() {
   if (!getToken()) { showLogin(); }
 })();
+  // Config
+  getConfig() {
+    return apiRequest('GET', '/config');
+  },
+  updateConfig(items) {
+    return apiRequest('PUT', '/config', { items });
+  },
