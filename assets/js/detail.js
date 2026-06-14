@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function loadDetail(id) {
   const content = document.getElementById('detail-content');
-  content.innerHTML = '<div class="loading"><div class="spinner"></div> 加载�?..</div>';
+  content.innerHTML = '<div class="loading"><div class="spinner"></div> 加载?..</div>';
 
   try {
     batchData = await api.getBatch(id);
@@ -46,11 +46,11 @@ function renderBasicInfo(data) {
   section.innerHTML = `
     <div class="detail-grid">
       <div class="detail-field">
-        <span class="detail-field-label">批次�?/span>
+        <span class="detail-field-label">批次?/span>
         <span class="detail-field-value">${data.batch_no}</span>
       </div>
       <div class="detail-field">
-        <span class="detail-field-label">状�?/span>
+        <span class="detail-field-label">状?/span>
         <span class="detail-field-value">${getStatusBadge(data.status)}</span>
       </div>
       <div class="detail-field">
@@ -70,7 +70,7 @@ function renderBasicInfo(data) {
         <span class="detail-field-value">${data.language || '-'}</span>
       </div>
       <div class="detail-field">
-        <span class="detail-field-label">工作流模�?/span>
+        <span class="detail-field-label">工作流模?/span>
         <span class="detail-field-value">${data.workflow_mode || '-'}</span>
       </div>
       <div class="detail-field">
@@ -78,7 +78,7 @@ function renderBasicInfo(data) {
         <span class="detail-field-value">${formatDateTime(data.created_at)}</span>
       </div>
       <div class="detail-field" style="grid-column: 1 / -1;">
-        <span class="detail-field-label">需求描�?/span>
+        <span class="detail-field-label">需求描?/span>
         <span class="detail-field-value">${data.requirement || '-'}</span>
       </div>
     </div>
@@ -165,7 +165,7 @@ function renderAttachments(data) {
   const product = data.product_json || {};
   const images = (product.attachments || []).filter(i => i.url);
   if (images.length === 0) {
-    section.innerHTML = '<div style="color:var(--gray-400);font-size:0.85rem;">无附件素�?/div>';
+    section.innerHTML = '<div style="color:var(--gray-400);font-size:0.85rem;">无附件素?/div>';
     return;
   }
   section.innerHTML = `<div class="image-grid">${images.map(img => `
@@ -213,7 +213,7 @@ function renderSKUList(data) {
     <div style="display:flex;flex-wrap:wrap;gap:8px;">
       ${skus.map(s => `<span class="sku-tag">${s.name || JSON.stringify(s)}</span>`).join('')}
     </div>
-    <div style="margin-top:8px;font-size:0.85rem;color:var(--gray-500);">�?${skus.length} �?SKU</div>
+    <div style="margin-top:8px;font-size:0.85rem;color:var(--gray-500);">?${skus.length} ?SKU</div>
   `;
 }
 
@@ -244,16 +244,16 @@ function renderGeneratedImages(data) {
   }
 
   if (detailImages.length > 0) {
-    html += '<h4 style="margin:12px 0 8px;font-size:0.85rem;color:var(--gray-600);">详情�?/h4>';
+    html += '<h4 style="margin:12px 0 8px;font-size:0.85rem;color:var(--gray-600);">详情?/h4>';
     html += `<div class="image-grid">${detailImages.map(url => `
-      <div class="image-grid-item"><img src="${url}" alt="详情�?></div>
+      <div class="image-grid-item"><img src="${url}" alt="详情?></div>
     `).join('')}</div>`;
   }
 
   if (skuImages.length > 0) {
-    html += '<h4 style="margin:12px 0 8px;font-size:0.85rem;color:var(--gray-600);">SKU �?/h4>';
+    html += '<h4 style="margin:12px 0 8px;font-size:0.85rem;color:var(--gray-600);">SKU ?/h4>';
     html += `<div class="image-grid">${skuImages.map(url => `
-      <div class="image-grid-item"><img src="${url}" alt="SKU�?></div>
+      <div class="image-grid-item"><img src="${url}" alt="SKU?></div>
     `).join('')}</div>`;
   }
 
@@ -301,13 +301,17 @@ function renderJobs(data) {
           ${jobStatusOrder.filter(s => s !== 'completed' && s !== 'failed').map((step, i) => {
             const idx = jobStatusOrder.indexOf(job.status);
             const cls = i < idx ? 'completed' : (i === idx ? 'active' : '');
-            const labels = {
-              planning: '规划�?, main_image: '生成Main Image', detail_image: '生成详情�?,
-              sku_image: '生成SKU�?, exporting: '导出�?, uploading: '上传�?,
+                        const labels = {
+              planning: "Planning",
+              main_image: "Main Image",
+              detail_image: "Detail Image",
+              sku_image: "SKU Image",
+              exporting: "Exporting",
+              uploading: "Uploading",
             };
             return `<div class="timeline-item ${cls}">${labels[step] || step}</div>`;
           }).join('')}
-          ${job.status === 'completed' ? '<div class="timeline-item completed">已完�?/div>' : ''}
+          ${job.status === 'completed' ? '<div class="timeline-item completed">已完?/div>' : ''}
           ${job.status === 'failed' ? '<div class="timeline-item active" style="color:var(--red-600);">Failed</div>' : ''}
         </div>
         <div style="font-size:0.8rem;color:var(--gray-400);margin-top:8px;">
