@@ -333,26 +333,39 @@ function renderJobs(data) {
 /* --- Workflow Controls --- */
 function addWorkflowControls(data) {
   const container = document.getElementById('detail-content');
+  const batchNo = data.batch_no || '#' + data.id;
+  let actions = '<div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">';
   if (data.status === 'pending') {
-    const div = document.createElement('div');
-    div.innerHTML = '<div style="margin-bottom:16px;display:flex;gap:12px;align-items:center">' +
-      '<button class="btn btn-primary" onclick="startWorkflow(' + data.id + ')">Push to Workflow</button>' +
-      '<span style="font-size:0.85rem;color:var(--gray-500)">Batch is pending. Review and push to start.</span></div>';
-    container.insertBefore(div.firstElementChild, container.firstChild);
-  } else if (data.status === 'running') {
-    const div = document.createElement('div');
-    const phases = ['title_generating','planning','main_image','detail_image','sku_image'];
-    const labels = ['Title','Plan','Main Image','Detail Image','SKU Image'];
-    const mode = data.workflow_mode;
-    let btns = '';
-    if (mode === 'manual') {
-      btns = phases.map((p,i) => '<button class="btn btn-secondary btn-sm" onclick="pushPhase(' + data.id + ',\'' + p + '\')">Push ' + labels[i] + '</button>').join(' ');
-    } else {
-      btns = '<span style="font-size:0.85rem;color:var(--gray-500)">Auto mode: Worker orchestrates phases automatically.</span>';
-    }
-    div.innerHTML = '<div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">' + btns + '</div>';
-    container.insertBefore(div.firstElementChild, container.firstChild);
+    actions += '<button class="btn btn-primary" onclick="startWorkflow(' + data.id + ')">\u63a8\u9001\u5230\u5de5\u4f5c\u6d41</button>';
+    actions += '<span style="font-size:0.85rem;color:var(--gray-500)">\u5ba1\u6838\u65e0\u8bef\u540e\u70b9\u51fb\u63a8\u9001</span>';
   }
+  if (data.status === 'running' || data.status === 'pending') {
+    actions += '<button class="btn btn-danger btn-sm" onclick="deleteBatch(' + data.id + ')">\u5220\u9664\u4efb\u52a1</button>';
+  }
+  if (data.status === 'running') {
+    const phases = ['title_generating','planning','main_image','detail_image','sku_image'];
+    const labels = ['\u751f\u6210\u6807\u9898','\u89c4\u5212\u5957\u56fe','\u751f\u6210\u4e3b\u56fe','\u751f\u6210\u8be6\u60c5\u56fe','\u751f\u6210SKU\u56fe'];
+    actions += '<span style="font-size:0.85rem;color:var(--gray-400);margin:0 4px">|</span>';
+    actions += phases.map((p,i) => '<button class="btn btn-secondary btn-sm" onclick="pushPhase(' + data.id + ',\'' + p + '\')">' + labels[i] + '</button>').join(' ');
+  }
+  if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
+    actions += '<button class="btn btn-danger btn-sm" onclick="deleteBatch(' + data.id + ')">\u5220\u9664\u4efb\u52a1</button>';
+  }
+  actions += '</div>';
+  const div = document.createElement('div');
+  div.innerHTML = actions;
+  container.insertBefore(div.firstElementChild, container.firstChild);
+}
+
+async function deleteBatch(id) {
+  if (!confirm('\u786e\u5b9a\u8981\u5220\u9664\u8be5\u4efb\u52a1\uff1f\u8be5\u64cd\u4f5c\u4e0d\u53ef\u64a4\u9500\uff0c\u4e14\u4f1a\u540c\u65f6\u5220\u9664R2\u4e2d\u5bf9\u5e94\u7684\u6240\u6709\u8d44\u6e90\u3002')) return;
+  try {
+    const r = await fetch(API_BASE + '/batches/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + getToken() } });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    createToast('\u4efb\u52a1\u5df2\u5220\u9664');
+    setTimeout(function(){ navigate('jobs.html'); }, 800);
+  } catch (e) { createToast('\u5220\u9664\u5931\u8d25: ' + e.message, 'error'); }
 }
 
 async function startWorkflow(id) {

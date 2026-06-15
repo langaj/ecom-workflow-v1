@@ -46,6 +46,7 @@ function generateBatchNo() {
 }
 function generateJobNo(bn,i){return bn+"-"+String(i).padStart(3,"0");}
 function pjs(s,fb){try{return JSON.parse(s)}catch{return fb}}
+function extractR2Key(u){if(!u)return null;try{return new URL(u).pathname.replace(/^\//,"")}catch{return null}}
 function nowStr(){return new Date().toISOString().replace("T"," ").substring(0,19);}
 function b64e(s){return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");}
 function b64d(s){s=s.replace(/-/g,"+").replace(/_/g,"/");while(s.length%4)s+="=";return atob(s);}
@@ -153,7 +154,14 @@ async function handleUpdateBatch(id,request,env){
 }
 async function handleDeleteBatch(id,env){
   const db=env.DB;
-  if(!(await db.prepare("SELECT id FROM ecom_batch WHERE id=?").bind(id).first()))return jsonResponse({error:"Batch not found"},404);
+  const batch=await db.prepare("SELECT * FROM ecom_batch WHERE id=?").bind(id).first();
+  if(!batch)return jsonResponse({error:"Batch not found"},404);
+  const keys=[];
+  const pi=pjs(batch.product_json,{});
+  for(const item of[...(pi.referenceImages||[]),...(pi.attachments||[])]){if(item.key)keys.push(item.key);}
+  const jobs=await db.prepare("SELECT * FROM ecom_job WHERE batch_id=?").bind(id).all();
+  for(const j of jobs.results){const r=pjs(j.result_json,{});const imgs=r.images||[];for(const img of imgs){const k=extractR2Key(img);if(k)keys.push(k);}}
+  if(keys.length>0&&env.R2)await env.R2.delete(keys);
   await db.prepare("DELETE FROM ecom_job WHERE batch_id=?").bind(id).run();
   await db.prepare("DELETE FROM ecom_batch WHERE id=?").bind(id).run();
   return jsonResponse({message:"Batch deleted"});

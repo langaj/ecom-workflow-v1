@@ -115,17 +115,18 @@ function createToast(message, type = 'success') {
 
 function getStatusBadge(status) {
   const labels = {
-    pending: 'Pending',
-    running: 'Running',
-    completed: 'Completed',
-    failed: 'Failed',
-    cancelled: 'Cancelled',
-    planning: 'Planning',
-    main_image: 'Main Image',
-    detail_image: 'Detail Image',
-    sku_image: 'SKU Image',
-    exporting: 'Exporting',
-    uploading: 'Uploading',
+    pending: '等待中',
+    running: '执行中',
+    completed: '已完成',
+    failed: '已失败',
+    cancelled: '已取消',
+    title_generating: '生成标题',
+    planning: '规划中',
+    main_image: '生成主图',
+    detail_image: '生成详情图',
+    sku_image: '生成SKU图',
+    exporting: '导出中',
+    uploading: '上传中',
   };
   const label = labels[status] || status;
   return `<span class="badge badge-${status}">${label}</span>`;
