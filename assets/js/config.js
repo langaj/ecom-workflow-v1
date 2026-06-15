@@ -8,7 +8,7 @@ function esc(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/
 function renderForm(items){
   const desc={auth_password:'留空则保持当前值。',r2_public_url:'R2 公开域名',n8n_workflow_title_url:'N8N 标题生成',n8n_workflow_plan_url:'N8N 规划',n8n_workflow_main_url:'N8N 主图',n8n_workflow_detail_url:'N8N 详情图',n8n_workflow_sku_url:'N8N SKU'};
   let rows='';
-  const ks=['auth_password','r2_public_url','n8n_workflow_title_url','n8n_workflow_plan_url','n8n_workflow_main_url','n8n_workflow_detail_url','n8n_workflow_sku_url'];
+  const ks=['auth_password','r2_public_url','n8n_workflow_title_url','n8n_workflow_plan_url','n8n_workflow_main_url','n8n_workflow_detail_url','n8n_workflow_sku_url','parallel_count'];
   for(const k of ks){
     const info=items[k];if(!info)continue;
     const isPwd=info.type==='password';

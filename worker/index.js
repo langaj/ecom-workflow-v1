@@ -20,12 +20,12 @@ function invalidateConfig() { configCache = null; configCacheTime = 0; }
 async function ensureConfigTable(env) {
   try {
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS ecom_config (id INTEGER PRIMARY KEY AUTOINCREMENT,config_key TEXT NOT NULL UNIQUE,config_value TEXT NOT NULL DEFAULT '',config_type TEXT NOT NULL DEFAULT 'string',description TEXT NOT NULL DEFAULT '',updated_at TEXT NOT NULL DEFAULT (datetime('now')))").run();
-    await env.DB.prepare("INSERT OR IGNORE INTO ecom_config(config_key,config_value,config_type,description) VALUES('auth_password','admin123','password','Login password / JWT signing key'),('r2_public_url','','string','R2 public bucket domain'),('n8n_workflow_title_url','','url','N8N title workflow webhook'),('n8n_workflow_plan_url','','url','N8N plan workflow webhook'),('n8n_workflow_main_url','','url','N8N main image workflow webhook'),('n8n_workflow_detail_url','','url','N8N detail image workflow webhook'),('n8n_workflow_sku_url','','url','N8N SKU image workflow webhook')").run();
+    await env.DB.prepare("INSERT OR IGNORE INTO ecom_config(config_key,config_value,config_type,description) VALUES('auth_password','admin123','password','Login password / JWT signing key'),('r2_public_url','','string','R2 public bucket domain'),('n8n_workflow_title_url','','url','N8N title workflow webhook'),('n8n_workflow_plan_url','','url','N8N plan workflow webhook'),('n8n_workflow_main_url','','url','N8N main image workflow webhook'),('n8n_workflow_detail_url','','url','N8N detail image workflow webhook'),('n8n_workflow_sku_url','','url','N8N SKU image workflow webhook'),('parallel_count','3','string','Parallel jobs per batch (3-5)')").run();
   } catch {}
 }
 
 const PHASE_ORDER = [
-  "title_generating","planning","main_image",
+  "planning","title_generating","main_image",
   "detail_image","sku_image","exporting","completed"
 ];
 const PHASE_CFG_KEY = {
@@ -169,17 +169,23 @@ async function handleDeleteBatch(id,env){
 async function callN8NPhase(env,phase,batchId){
   const cfg=await getConfig(env), urlKey=PHASE_CFG_KEY[phase], whUrl=cfg[urlKey];
   if(!whUrl)return {error:"No webhook for phase "+phase};
-  const db=env.DB;
-  const batch=await db.prepare("SELECT * FROM ecom_batch WHERE id=?").bind(batchId).first();
+  const db=env.DB, batch=await db.prepare("SELECT * FROM ecom_batch WHERE id=?").bind(batchId).first();
   if(!batch)return {error:"Batch not found"};
   const jobs=await db.prepare("SELECT * FROM ecom_job WHERE batch_id=? ORDER BY job_no ASC").bind(batchId).all();
   const pi=pjs(batch.product_json,{}), vt=pjs(batch.variant_json,[]), sp=pjs(batch.spec_json,[]), sk=pjs(batch.sku_json,[]);
-  const payload={batch_id:batch.id,batch_no:batch.batch_no,task_name:batch.task_name,platform:batch.platform,market:batch.market,language:batch.language,requirement:batch.requirement,workflow_mode:batch.workflow_mode,product_info:pi,variants:vt,specs:sp,skus:sk,jobs:jobs.results.map(j=>({job_no:j.job_no,status:j.status,sku_info:pjs(j.sku_info,{}),result_json:pjs(j.result_json,{})})),phase,callback_url:""};
-  try{
-    const resp=await fetch(whUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
-    if(!resp.ok)return {error:"N8N "+resp.status+": "+(await resp.text()).substring(0,200)};
-    return {success:true};
-  }catch(e){return {error:"N8N call failed: "+e.message};}
+  const base={batch_id:batch.id,batch_no:batch.batch_no,task_name:batch.task_name,platform:batch.platform,market:batch.market,language:batch.language,requirement:batch.requirement,workflow_mode:batch.workflow_mode,product_info:pi,variants:vt,specs:sp,skus:sk,phase,callback_url:""};
+  const parallel=parseInt(cfg.parallel_count)||3;
+  let errors=[];
+  for(let i=0;i<jobs.results.length;i+=parallel){
+    const chunk=jobs.results.slice(i,i+parallel);
+    const results=await Promise.all(chunk.map(job=>{
+      const body={...base,jobs:[{job_no:job.job_no,status:job.status,sku_info:pjs(job.sku_info,{}),result_json:pjs(job.result_json,{})}]};
+      return fetch(whUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(r=>r.ok?null:r.text().then(t=>({job:job.job_no,error:t.substring(0,200)}))).catch(e=>({job:job.job_no,error:e.message}));
+    }));
+    for(const err of results)if(err)errors.push(err);
+  }
+  if(errors.length)return {error:"Parallel errors: "+errors.map(function(e){return e.job+":"+e.error;}).join("; ")};
+  return {success:true};
 }
 async function handleBatchStart(id,env){
   const db=env.DB;
@@ -190,7 +196,7 @@ async function handleBatchStart(id,env){
   await db.prepare("UPDATE ecom_batch SET status=?,updated_at=? WHERE id=?").bind("running",n,id).run();
   await seedEvent(env,id,"batch_update",{status:"running"});
   if(batch.workflow_mode==="auto"){
-    const r=await callN8NPhase(env,"title_generating",id);
+    const r=await callN8NPhase(env,"planning",id);
     if(r.error)return jsonResponse({message:"Batch started, N8N trigger failed",error:r.error},200);
     return jsonResponse({message:"Batch started, workflow triggered"});
   }

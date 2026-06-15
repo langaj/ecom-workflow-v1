@@ -423,8 +423,8 @@ function addWorkflowControls(data) {
     actions += '<button class="btn btn-danger btn-sm" onclick="deleteBatch(' + data.id + ')">\u5220\u9664\u4efb\u52a1</button>';
   }
   if (data.status === 'running') {
-    const phases = ['title_generating','planning','main_image','detail_image','sku_image'];
-    const labels = ['\u751f\u6210\u6807\u9898','\u89c4\u5212\u5957\u56fe','\u751f\u6210\u4e3b\u56fe','\u751f\u6210\u8be6\u60c5\u56fe','\u751f\u6210SKU\u56fe'];
+    const phases = ['planning','title_generating','main_image','detail_image','sku_image'];
+    const labels = ['\u89c4\u5212\u5957\u56fe','\u751f\u6210\u6807\u9898','\u751f\u6210\u4e3b\u56fe','\u751f\u6210\u8be6\u60c5\u56fe','\u751f\u6210SKU\u56fe'];
     actions += '<span style="font-size:0.85rem;color:var(--gray-400);margin:0 4px">|</span>';
     actions += phases.map((p,i) => '<button class="btn btn-secondary btn-sm" onclick="pushPhase(' + data.id + ',\'' + p + '\')">' + labels[i] + '</button>').join(' ');
   }
