@@ -64,3 +64,8 @@ INSERT OR IGNORE INTO ecom_config (config_key, config_value, config_type, descri
   ('n8n_workflow_main_url', '', 'url', 'N8N 主图生成工作流 Webhook URL'),
   ('n8n_workflow_detail_url', '', 'url', 'N8N 详情图生成工作流 Webhook URL'),
   ('n8n_workflow_sku_url', '', 'url', 'N8N SKU 图生成工作流 Webhook URL');
+
+-- NEW: ecom_batch stock/weight/price
+-- ALTER TABLE ecom_batch ADD COLUMN stock INTEGER NOT NULL DEFAULT 100;
+-- ALTER TABLE ecom_batch ADD COLUMN weight_kg REAL NOT NULL DEFAULT 1.0;
+-- ALTER TABLE ecom_batch ADD COLUMN base_price REAL NOT NULL DEFAULT 0;

@@ -101,7 +101,7 @@ async function handleDashboard(env){
 }
 async function handleCreateBatch(request,env){
   const db=env.DB, body=await request.json(), bn=generateBatchNo(), n=nowStr();
-  const r=await db.prepare("INSERT INTO ecom_batch(batch_no,task_name,platform,market,language,requirement,status,workflow_mode,batch_count,main_image_count,detail_image_count,sku_image_count,product_json,variant_json,spec_json,sku_json,title_json,created_at,updated_at) VALUES(?,?,?,?,?,?,'pending',?,?,?,?,?,?,?,?,?,'{}',?,?)").bind(
+  const r=await db.prepare("INSERT INTO ecom_batch(batch_no,task_name,platform,market,language,requirement,status,workflow_mode,batch_count,main_image_count,detail_image_count,sku_image_count,product_json,variant_json,spec_json,sku_json,title_json,stock,weight_kg,base_price,created_at,updated_at) VALUES(?,?,?,?,?,?,'pending',?,?,?,?,?,?,?,?,?,'{}',?,?,?,?,?)").bind(
     bn,body.taskName||"",body.platform||"",body.market||"",body.language||"",body.requirement||"",
     body.workflowMode||"auto",body.batchCount||1,body.mainImageCount||1,body.detailImageCount||1,body.skuImageCount||1,
     JSON.stringify(body.productInfo||{}),JSON.stringify(body.variants||[]),JSON.stringify(body.specs||[]),JSON.stringify(body.skus||[]),
@@ -139,7 +139,7 @@ async function handleUpdateBatch(id,request,env){
   const db=env.DB, body=await request.json(), n=nowStr();
   if(!(await db.prepare("SELECT id FROM ecom_batch WHERE id=?").bind(id).first()))return jsonResponse({error:"Batch not found"},404);
   const up=[],p=[];
-  const fm={taskName:"task_name",platform:"platform",market:"market",language:"language",requirement:"requirement",status:"status",workflowMode:"workflow_mode",batchCount:"batch_count",mainImageCount:"main_image_count",detailImageCount:"detail_image_count",skuImageCount:"sku_image_count"};
+  const fm={taskName:"task_name",platform:"platform",market:"market",language:"language",requirement:"requirement",status:"status",workflowMode:"workflow_mode",batchCount:"batch_count",mainImageCount:"main_image_count",detailImageCount:"detail_image_count",skuImageCount:"sku_image_count",stock:"stock",weightKg:"weight_kg",basePrice:"base_price"};
   for(const[bk,dk]of Object.entries(fm))if(body[bk]!==undefined){up.push(dk+"=?");p.push(body[bk]);}
   if(body.productInfo){up.push("product_json=?");p.push(JSON.stringify(body.productInfo));}
   if(body.variants){up.push("variant_json=?");p.push(JSON.stringify(body.variants));}
@@ -309,7 +309,7 @@ export default {
     try{
       if(method==="GET"&&path==="/api/events")return await handleEvents(request,env,ch);
       if(method==="POST"&&path==="/api/auth/login")return await handleLogin(request,env,ch);
-      if(path.startsWith("/api/")){
+      if(path.startsWith("/api/")&&path!=="/api/callback/job"&&path!=="/api/upload"){
         const cfg=await getConfig(env), secret=cfg.auth_password||"";
         const auth=request.headers.get("Authorization");
         if(!(await jwtVerify(auth?auth.replace("Bearer ",""):"",secret)))

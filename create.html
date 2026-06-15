@@ -91,7 +91,21 @@
           </div>
           <div class="card">
             <div class="card-header"><span class="card-title">生成配置</span></div>
-            <div class="form-row-4">
+                      <div class="form-row-3" style="margin-top:12px">
+              <div class="form-group">
+                <label class="form-label" for="stock">库存</label>
+                <input class="form-input" id="stock" name="stock" type="number" min="0" value="100">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="weightKg">重量(kg)</label>
+                <input class="form-input" id="weightKg" name="weightKg" type="number" min="0" step="0.1" value="1">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="basePrice">基本售价</label>
+                <input class="form-input" id="basePrice" name="basePrice" type="number" min="0" step="0.01" value="0">
+              </div>
+            </div>
+          <div class="form-row-4">
               <div class="form-group">
                 <label class="form-label" for="batchCount">生成几组</label>
                 <input class="form-input" id="batchCount" name="batchCount" type="number" min="1" value="1">

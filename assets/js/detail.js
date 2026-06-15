@@ -331,6 +331,86 @@ function renderJobs(data) {
 }
 
 /* --- Workflow Controls --- */
+
+/* --- 导出Excel (Jushuitan 格式) --- */
+function exportExcel() {
+  if (!batchData) return;
+  const d = batchData;
+  const title = d.title_json || {};
+  const productTitle = title.product_title || d.task_name || '';
+  const stock = d.stock || 100;
+  const weight = d.weight_kg || 1.0;
+  const price = d.base_price || 0;
+  const jobs = d.jobs || [];
+  if (jobs.length === 0) { createToast('无可导出的SKU','error'); return; }
+
+  // Build rows
+  let xml = '<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?>'
+    + '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"'
+    + ' xmlns:o="urn:schemas-microsoft-com:office:office"'
+    + ' xmlns:x="urn:schemas-microsoft-com:office:excel"'
+    + ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">'
+    + '<Worksheet ss:Name="\u5546\u54c1\u5bfc\u5165"><Table>';
+
+  // Header
+  const headers = ['\u6b3e\u5f0f\u7f16\u7801','\u5546\u54c1\u7f16\u7801','\u989c\u8272','\u89c4\u683c',
+    '\u5546\u54c1\u4e3b\u56fe','\u5546\u54c1\u8be6\u60c5\u56fe','\u56fe\u7247\u5730\u5740',
+    '\u5546\u54c1\u540d\u79f0','\u63a8\u8350\u6587\u6848','\u5546\u54c1\u63cf\u8ff0',
+    '\u5b9d\u8d1d\u94fe\u63a5','\u5e93\u5b58','\u91cd\u91cf(kg)','\u57fa\u672c\u552e\u4ef7',
+    '\u5e02\u573a|\u540a\u724c\u4ef7','\u6700\u4f4e\u5206\u9500\u63a7\u4ef7',
+    '\u6700\u9ad8\u5206\u9500\u63a7\u4ef7','\u4f9b\u5e94\u5546\u540d',
+    '3:4\u4e3b\u56fe','\u957f\u56fe','\u900f\u660e\u7d20\u6750\u56fe','\u767d\u5e95\u56fe'];
+  xml += '<Row>';
+  for (const h of headers) xml += '<Cell><Data ss:Type="String">' + esc(h) + '</Data></Cell>';
+  xml += '</Row>';
+
+  // Data rows (one per job)
+  for (const job of jobs) {
+    const skuInfo = job.sku_info || {};
+    const result = job.result_json || {};
+    const variant = skuInfo.variant || '';
+    const specs = (skuInfo.specs || []).map(function(s){ return s.value || ''; }).join('+');
+    const skuCode = job.job_no || '';
+    const styleCode = job.job_no || '';
+
+    // Collect images from this job's result_json
+    const mainImgs = result.images || [];
+    const detailImgs = result.detailImages || [];
+    const skuImg = (result.skuImages && result.skuImages[0]) || (result.images && result.images[0]) || '';
+    const mainJson = JSON.stringify(mainImgs);
+    const detailJson = JSON.stringify(detailImgs);
+
+    xml += '<Row>';
+    xml += '<Cell><Data ss:Type="String">' + esc(styleCode) + '</Data></Cell>';       // A: 款式编码
+    xml += '<Cell><Data ss:Type="String">' + esc(skuCode) + '</Data></Cell>';         // B: 商品编码
+    xml += '<Cell><Data ss:Type="String">' + esc(variant) + '</Data></Cell>';         // C: 颜色
+    xml += '<Cell><Data ss:Type="String">' + esc(specs) + '</Data></Cell>';           // D: 规格
+    xml += '<Cell><Data ss:Type="String">' + esc(mainJson) + '</Data></Cell>';        // E: 主图
+    xml += '<Cell><Data ss:Type="String">' + esc(detailJson) + '</Data></Cell>';      // F: 详情图
+    xml += '<Cell><Data ss:Type="String">' + esc(skuImg) + '</Data></Cell>';          // G: 图片地址
+    xml += '<Cell><Data ss:Type="String">' + esc(productTitle) + '</Data></Cell>';    // H: 商品名称
+    for (let i = 0; i < 4; i++) xml += '<Cell><Data ss:Type="String"></Data></Cell>'; // I,J,K,L (empty for now)
+    xml += '<Cell><Data ss:Type="Number">' + stock + '</Data></Cell>';                // L: 库存
+    xml += '<Cell><Data ss:Type="Number">' + weight + '</Data></Cell>';               // M: 重量
+    xml += '<Cell><Data ss:Type="Number">' + price + '</Data></Cell>';                // N: 基本售价
+    for (let i = 0; i < 6; i++) xml += '<Cell><Data ss:Type="String"></Data></Cell>'; // O-R (empty), S-V (empty reserved)
+    xml += '</Row>';
+  }
+
+  xml += '</Table></Worksheet></Workbook>';
+
+  // Trigger download
+  const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (d.batch_no || 'export') + '_' + d.task_name + '.xls';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function addWorkflowControls(data) {
   const container = document.getElementById('detail-content');
   const batchNo = data.batch_no || '#' + data.id;

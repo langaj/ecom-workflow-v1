@@ -172,6 +172,9 @@ document.getElementById('create-form').addEventListener('submit', async (e) => {
       mainImageCount: parseInt(fd.get('mainImageCount')) || 1,
       detailImageCount: parseInt(fd.get('detailImageCount')) || 1,
       skuImageCount: parseInt(fd.get('skuImageCount')) || 1,
+      stock: parseInt(fd.get('stock')) || 100,
+      weightKg: parseFloat(fd.get('weightKg')) || 1.0,
+      basePrice: parseFloat(fd.get('basePrice')) || 0,
       workflowMode: fd.get('workflowMode') || 'auto',
     };
     const r = await api.createBatch(body);
