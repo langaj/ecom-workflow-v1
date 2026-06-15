@@ -240,7 +240,7 @@ async function handleJobCallback(request,env){
   if(!job_no)return jsonResponse({error:"job_no required"},400);
   const job=await db.prepare("SELECT * FROM ecom_job WHERE job_no=?").bind(job_no).first();
   if(!job)return jsonResponse({error:"Job not found"},404);
-  const nr={...(pjs(job.result_json,{}))};
+  const nr={...(pjs(job.result_json,{}))};  const oldStatus=job.status;
   if(result)Object.assign(nr,result);
   if(images)nr.images=images;
   if(titles)nr.titles=titles;
@@ -254,29 +254,27 @@ async function handleJobCallback(request,env){
     if(status&&status!=="pending")
       await db.prepare("UPDATE ecom_batch SET status=?,updated_at=? WHERE id=? AND status IN ('pending','running')").bind("running",n,job.batch_id).run();
     const batch=await db.prepare("SELECT * FROM ecom_batch WHERE id=?").bind(job.batch_id).first();
-    if(batch&&batch.workflow_mode==="auto")await advancePhase(env,job.batch_id);
+    if(batch&&batch.workflow_mode==="auto"&&status&&status!==oldStatus){
+      const newIdx=PHASE_ORDER.indexOf(status);
+      const oldIdx=PHASE_ORDER.indexOf(oldStatus);
+      if(newIdx>oldIdx&&newIdx>=0){
+        const nxtIdx=newIdx+1;
+        if(nxtIdx<PHASE_ORDER.length){
+          const nextPhase=PHASE_ORDER[nxtIdx];
+          if(nextPhase&&nextPhase!=="completed"&&PHASE_CFG_KEY[nextPhase]){
+            const jobs=await db.prepare("SELECT * FROM ecom_job WHERE batch_id=?").bind(job.batch_id).all();
+            const allReady=jobs.results.every(j=>PHASE_ORDER.indexOf(j.status)>=newIdx);
+            const alreadyAdv=jobs.results.some(j=>PHASE_ORDER.indexOf(j.status)>newIdx);
+            if(allReady&&!alreadyAdv){
+              const r=await callN8NPhase(env,nextPhase,job.batch_id);
+              if(r.error)await seedEvent(env,job.batch_id,"phase_error",{phase:nextPhase,error:r.error});
+            }
+          }
+        }
+      }
+    }
   }
   return jsonResponse({message:"Job updated"});
-}
-async function advancePhase(env,batchId){
-  const db=env.DB;
-  const jobs=await db.prepare("SELECT * FROM ecom_job WHERE batch_id=?").bind(batchId).all();
-  const batch=await db.prepare("SELECT * FROM ecom_batch WHERE id=?").bind(batchId).first();
-  if(!batch||batch.status==="failed"||batch.status==="completed")return;
-  let allDone=true, minIdx=999;
-  for(const j of jobs.results){
-    if(j.status!=="completed"){allDone=false;const idx=PHASE_ORDER.indexOf(j.status);if(idx>=0&&idx<minIdx)minIdx=idx;}
-  }
-  if(allDone){await db.prepare("UPDATE ecom_batch SET status=?,updated_at=? WHERE id=?").bind("completed",nowStr(),batchId).run();await seedEvent(env,batchId,"batch_update",{status:"completed"});return;}
-  if(minIdx===999)return;
-  const allAtOrPast=jobs.results.every(j=>PHASE_ORDER.indexOf(j.status)>=minIdx);
-  if(!allAtOrPast)return;
-  const nxtIdx=minIdx+1;
-  if(nxtIdx>=PHASE_ORDER.length){await db.prepare("UPDATE ecom_batch SET status=?,updated_at=? WHERE id=?").bind("completed",nowStr(),batchId).run();await seedEvent(env,batchId,"batch_update",{status:"completed"});return;}
-  const nxt=PHASE_ORDER[nxtIdx];
-  if(nxt==="completed"||!PHASE_CFG_KEY[nxt]){await db.prepare("UPDATE ecom_batch SET status=?,updated_at=? WHERE id=?").bind("completed",nowStr(),batchId).run();await seedEvent(env,batchId,"batch_update",{status:"completed"});return;}
-  const r=await callN8NPhase(env,nxt,batchId);
-  if(r.error)await seedEvent(env,batchId,"phase_error",{phase:nxt,error:r.error});
 }
 async function seedEvent(env,batchId,evtType,payload){
   try{await env.DB.prepare("INSERT INTO ecom_event(batch_id,event_type,payload,created_at) VALUES(?,?,?,?)").bind(batchId,evtType,JSON.stringify(payload),nowStr()).run();}catch{}
