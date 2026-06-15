@@ -370,7 +370,7 @@ function exportExcel() {
     const result = job.result_json || {};
     const variant = skuInfo.variant || '';
     const specs = (skuInfo.specs || []).map(function(s){ return s.value || ''; }).join('+');
-    const skuCode = job.job_no || '';
+    const skuCode = 'SKU-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2,6).toUpperCase();
     const styleCode = job.job_no || '';
 
     // Collect images from this job's result_json
